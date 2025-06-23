@@ -1,5 +1,5 @@
 # Vue Kanban Pro 🚀
-
+<p align="center"><img src="kanban-pic.png" alt="Vue Kanban Pro UI Banner"></p>
 
 A sleek, responsive, and feature-rich Kanban board application built with Vue 3 (using the global build). This project focuses on providing an enhanced user interface for task management without backend persistence, making it ideal for local use, demonstrations, or as a starting point for a more complex application.
 
