@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue Kanban Pro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <nav>
+            <a @click="navigateToRoute('boards')">{{ tGlobal('navHome') }}</a>
+            <a @click="navigateToRoute('settings')">{{ tGlobal('navSettings') }}</a>
+        </nav>
+
+        <div id="app-container">
+            <board-list-page v-if="currentPage === 'boards'"
+                :boards="state.boards"
+                @add-board="addBoard"
+                @delete-board="deleteBoard"
+                @view-board="viewBoard"
+                :t-global="tGlobal"
+            ></board-list-page>
+
+            <board-view-page v-if="currentPage === 'board' && currentBoard"
+                :board="currentBoard"
+                :search-query="state.ui.filterQuery"
+                @update-search-query="newVal => state.ui.filterQuery = newVal"
+                @add-task="addTaskToBoard"
+                @open-task-modal="openTaskModal"
+                @task-drag-start="handleTaskDragStart"
+                @task-drop-on-column="handleTaskDropOnColumn"
+                :t-global="tGlobal"
+                :settings="state.settings"
+                :navigate-to-route="navigateToRoute"
+                class="board-view-page"
+            ></board-view-page>
+
+            <settings-page v-if="currentPage === 'settings'"
+                :settings="state.settings"
+                @update-settings="updateSettings"
+                :t-global="tGlobal"
+                class="settings-page"
+            ></settings-page>
+        </div>
+
+        <task-modal v-if="state.ui.editingTask"
+            :task="state.ui.editingTask.task"
+            :column-id="state.ui.editingTask.columnId"
+            @close="closeTaskModal"
+            @save-task="saveTaskChanges"
+            @delete-task="deleteTaskFromModal"
+            :t-global="tGlobal"
+        ></task-modal>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
