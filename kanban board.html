@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue Kanban Pro UI Enhanced (No Persistence) - Fixed</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        :root {
+            --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            
+            --color-primary: #007bff;
+            --color-primary-hover: #0056b3;
+            --color-danger: #dc3545;
+            --color-danger-hover: #c82333;
+            --color-text: #212529;
+            --color-text-muted: #6c757d;
+            --color-background: #f8f9fa; /* This will be overridden by the image on body */
+            --color-surface: #ffffff;
+            --color-border: #dee2e6;
+            --color-input-bg: #ffffff;
+            --color-input-border: #ced4da;
+            --color-disabled-bg: #e9ecef;
+            --color-disabled-text: #6c757d;
+
+            --border-radius-sm: 0.2rem;
+            --border-radius-md: 0.25rem;
+            --border-radius-lg: 0.3rem;
+
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+        }
+
+        .dark-mode {
+            --color-primary: #378BFF;
+            --color-primary-hover: #1A73E8;
+            --color-danger: #ff5252;
+            --color-danger-hover: #ff1744;
+            --color-text: #e0e0e0;
+            --color-text-muted: #9e9e9e;
+            --color-background: #121212; /* This will be overridden by the image on body */
+            --color-surface: #1e1e1e;
+            --color-border: #424242;
+            --color-input-bg: #2c2c2c;
+            --color-input-border: #525252;
+            --color-disabled-bg: #383838;
+            --color-disabled-text: #757575;
+        }
+        .dark-mode .kanban-column { background-color: #2a2a2a; }
+        .dark-mode .task-card { background-color: var(--color-surface); }
+        .dark-mode input, .dark-mode select, .dark-mode textarea {
+            background-color: var(--color-input-bg);
+            border-color: var(--color-input-border);
+            color: var(--color-text);
+        }
+        .dark-mode input::placeholder, .dark-mode textarea::placeholder { color: var(--color-text-muted); }
+        .dark-mode .error-message { color: #ff8a80; }
+        .dark-mode nav { background-color: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+        .dark-mode .page { background-color: var(--color-surface); border-color: var(--color-border); }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        html {
+            height: 100%;
+        }
+        body {
+            font-family: var(--font-family-sans); 
+            margin: 0;
+            /* background-color: var(--color-background); Removed, using image now */
+            color: var(--color-text);
+            line-height: 1.6; 
+            /* transition for background-color is less relevant with a fixed image */
+            
+            /* --- New Background Image Styles --- */
+            background-image: url('https://i.gifer.com/7SYH.gif');
+            background-size: cover; 
+            background-position: center center; 
+            background-repeat: no-repeat; 
+            background-attachment: fixed; 
+            min-height: 100vh; 
+            /* --- End New Background Image Styles --- */
+        }
+        nav {
+            background-color: var(--color-surface); padding: var(--spacing-sm) var(--spacing-md);
+            backdrop-filter: blur(1px);
+            margin-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--color-border);
+        }
+        nav a {
+            color: var(--color-primary); margin-right: var(--spacing-md); text-decoration: none;
+            font-weight: 500; cursor: pointer; transition: color 0.2s ease-in-out;
+        }
+        nav a:hover { color: var(--color-primary-hover); text-decoration: underline; }
+        #app-container { 
+            padding: 0 var(--spacing-md) var(--spacing-md); 
+            /* Added a default background to app-container for content legibility over the GIF if needed. 
+               Can be var(--color-background) or transparent or a semi-transparent version of it.
+               Adjust opacity as needed (e.g., background-color: rgba(248, 249, 250, 0.8) for light mode)
+               For now, we'll rely on individual components having their own backgrounds.
+            */
+        }
+        
+        .page { 
+            padding: var(--spacing-lg); 
+            margin-bottom: var(--spacing-lg);
+            /* Pages themselves might not need a default background if their content is structured
+               or if the intent is for the body's GIF to show through in some areas.
+               However, board-view-page and settings-page explicitly set it.
+            */
+        }
+        .board-view-page, .settings-page {
+             background-color: rgba(255, 255, 255, 0.96);
+             border: 1px solid var(--color-border);
+             border-radius: var(--border-radius-lg);
+             box-shadow: var(--shadow-sm);
+        }
+        .dark-mode .board-view-page, .dark-mode .settings-page {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: var(--color-border); 
+        }
+
+
+        .page h2, .page h3 { margin-top: 0; color: var(--color-text); }
+        .page h2 { font-size: 1.75rem; margin-bottom: var(--spacing-md); } 
+        .page h3 { font-size: 1.25rem; margin-bottom: var(--spacing-sm); }
+
+        .kanban-board {
+            display: flex; 
+            gap: var(--spacing-md);
+            overflow-x: auto;
+            padding: var(--spacing-sm);
+            /* Kanban board background, could be transparent or semi-transparent if you want GIF to show through */
+            background-color: var(--color-background); 
+            /* Example for semi-transparent: background-color: rgba(248, 249, 250, 0.9); */
+            /* In dark mode: background-color: rgba(18, 18, 18, 0.9); */
+            border-radius: var(--border-radius-md);
+            min-height: 400px;
+        }
+        .dark-mode .kanban-board {
+            background-color: var(--color-background); /* Adjust if semi-transparency is desired */
+        }
+
+        .kanban-column {
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius-md);
+            padding: var(--spacing-sm);
+            min-width: 300px; 
+            flex-grow: 1;    
+            flex-basis: 0;   
+            flex-shrink: 0; 
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-sm);
+            transition: background-color 0.2s ease-in-out;
+        }
+        .kanban-column.drag-over { background-color: #e6f2ff; }
+        .dark-mode .kanban-column.drag-over { background-color: #2c3e50; }
+        .dark-mode .kanban-column { background-color: #2a2a2a; } /* Already defined, good */
+
+        .kanban-column h3 {
+            margin-top: 0; font-size: 1.1em; padding-bottom: var(--spacing-sm);
+            border-bottom: 1px solid var(--color-border); margin-bottom: var(--spacing-md); font-weight: 600;
+        }
+        .tasks-container {
+            flex-grow: 1; min-height: 150px; display: flex; flex-direction: column;
+            gap: var(--spacing-sm); padding: var(--spacing-xs);
+        }
+        .task-card {
+            background-color: var(--color-surface); border: 1px solid var(--color-border);
+            border-left: 4px solid var(--color-text-muted); border-radius: var(--border-radius-md);
+            padding: var(--spacing-sm); cursor: grab; box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s ease-in-out, transform 0.15s ease-in-out;
+        }
+        .task-card:hover { box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .task-card.dragging { opacity: 0.7; background: #d4eaff; transform: rotate(3deg); }
+        .dark-mode .task-card.dragging { background: #3a506b; }
+        .dark-mode .task-card { background-color: var(--color-surface); } /* Already defined, good */
+        .task-card h4 { margin-top: 0; margin-bottom: var(--spacing-xs); font-size: 1rem; font-weight: 600; }
+        .task-card p { margin: var(--spacing-xs) 0; font-size: 0.9em; }
+        .task-card small { color: var(--color-text-muted); font-size: 0.8em; }
+        .task-card.priority-high { border-left-color: var(--color-danger); }
+        .task-card.priority-medium { border-left-color: #fd7e14; }
+        .dark-mode .task-card.priority-medium { border-left-color: #ffab40; }
+        .task-card.priority-low { border-left-color: #28a745; }
+        .dark-mode .task-card.priority-low { border-left-color: #69f0ae; }
+
+        .form-group { margin-bottom: var(--spacing-md); position: relative; }
+        .form-group label { display: block; margin-bottom: var(--spacing-xs); font-weight: 500; font-size: 0.9em;}
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: var(--spacing-sm); border: 1px solid var(--color-input-border);
+            border-radius: var(--border-radius-md); background-color: var(--color-input-bg);
+            color: var(--color-text); font-size: 0.95em;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        .dark-mode .form-group input:focus, .dark-mode .form-group select:focus, .dark-mode .form-group textarea:focus {
+             box-shadow: 0 0 0 0.2rem rgba(55,139,255,.25);
+        }
+        .form-group input.invalid, .form-group textarea.invalid { border-color: var(--color-danger); }
+        .form-group input.invalid:focus, .form-group textarea.invalid:focus { box-shadow: 0 0 0 0.2rem rgba(220,53,69,.25); }
+        .error-message { color: var(--color-danger); font-size: 0.85em; display: block; margin-top: var(--spacing-xs); }
+        
+        button {
+            padding: var(--spacing-sm) var(--spacing-md); font-size: 0.95em; font-weight: 500;
+            background-color: var(--color-primary); color: #ffffff; border: none;
+            border-radius: var(--border-radius-md); cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out; text-align: center;
+        }
+        button:hover { background-color: var(--color-primary-hover); }
+        button:active { transform: scale(0.98); }
+        button:disabled {
+            background-color: var(--color-disabled-bg); color: var(--color-disabled-text);
+            cursor: not-allowed; transform: none;
+        }
+        button.danger { background-color: var(--color-danger); }
+        button.danger:hover { background-color: var(--color-danger-hover); }
+
+        button.button-secondary {
+            background-color: var(--color-surface);
+            color: var(--color-primary);
+            border: 1px solid var(--color-primary);
+        }
+        button.button-secondary:hover {
+            background-color: var(--color-primary-hover);
+            color: #ffffff;
+            border-color: var(--color-primary-hover);
+        }
+        .dark-mode button.button-secondary {
+            background-color: var(--color-surface);
+            color: var(--color-primary);
+            border: 1px solid var(--color-primary);
+        }
+        .dark-mode button.button-secondary:hover {
+            background-color: var(--color-primary-hover);
+            color: var(--color-background); 
+            border-color: var(--color-primary-hover);
+        }
+
+        .modal {
+            display: flex; align-items: center; justify-content: center;
+            position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
+        }
+        .modal-content {
+            background-color: var(--color-surface); padding: var(--spacing-lg);
+            border: 1px solid var(--color-border); width: 90%; max-width: 550px;
+            border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md);
+            position: relative;
+        }
+        .modal-content h3 { margin-top: 0; margin-bottom: var(--spacing-md); font-size: 1.5rem; }
+        .close-button {
+            position: absolute; top: var(--spacing-sm); right: var(--spacing-md);
+            color: var(--color-text-muted); font-size: 1.75rem; line-height: 1;
+            font-weight: bold; cursor: pointer; transition: color 0.2s ease-in-out;
+            background: none; border: none; padding: 0;
+        }
+        .close-button:hover, .close-button:focus { color: var(--color-text); text-decoration: none; }
+
+        .add-task-toggle-button {
+            width: 100%;
+            border-radius: var(--border-radius-md);
+            margin-bottom: var(--spacing-md);
+        }
+        .add-task-toggle-button.is-open {
+            margin-bottom: 0;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .add-task-accordion-content {
+            padding: var(--spacing-lg); 
+            border: 1px solid var(--color-border);
+            border-top: none; 
+            border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+            background-color: var(--color-surface); 
+            margin-bottom: var(--spacing-md); 
+        }
+
+        .search-bar-wrapper { }
+        .search-icon {
+            position: absolute;
+            left: var(--spacing-sm);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--color-text-muted);
+            pointer-events: none; 
+            font-size: 0.9em;
+        }
+        .search-bar-wrapper input[type="text"] {
+            padding-left: calc(var(--spacing-sm) + 1.8em); 
+            padding-right: calc(var(--spacing-sm) + 1.8em);
+        }
+        .clear-search-button {
+            position: absolute;
+            right: var(--spacing-xs);
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            font-size: 1.3rem; 
+            line-height: 1;
+            cursor: pointer;
+            color: var(--color-text-muted);
+            padding: 0 var(--spacing-sm); 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 70%; 
+        }
+        .clear-search-button:hover {
+            color: var(--color-text);
+        }
+        .dark-mode .clear-search-button:hover {
+            color: var(--color-text);
+        }
+
+        .board-list-page {
+            background-color: transparent;
+        }
+
+        .dark-mode .board-list-page {
+            background-color: transparent;
+        }
+
+        .board-list-page .page-title {
+            text-align: center;
+            font-size: 2rem; 
+            margin-bottom: var(--spacing-xl); 
+            font-weight: 600; 
+            color: white;
+        }
+
+        .board-list-page .no-boards-welcome-container {
+            text-align: center;
+            padding: var(--spacing-lg) 0 var(--spacing-xl) 0; 
+            max-width: 500px; 
+            margin: 0 auto var(--spacing-xl) auto; 
+            /* If GIF makes text hard to read, add a semi-transparent background here */
+            /* background-color: rgba(var(--rgb-surface), 0.8); /* You'd need to define --rgb-surface */
+        }
+
+        .board-list-page .no-boards-welcome-container .icon {
+            font-size: 3rem; 
+            display: block;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-primary);
+        }
+
+        .board-list-page .no-boards-welcome-container .welcome-text {
+            font-size: 1.2rem;
+            color: white;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .board-list-page .no-boards-welcome-container .add-board-form-inline .form-group {
+            margin-bottom: var(--spacing-md); 
+        }
+        .board-list-page .no-boards-welcome-container .add-board-form-inline input[type="text"] {
+            text-align: center; 
+            font-size: 1rem; 
+        }
+        .board-list-page .no-boards-welcome-container .add-board-form-inline button {
+            width: 100%; 
+            padding-top: calc(var(--spacing-sm) + 2px); 
+            padding-bottom: calc(var(--spacing-sm) + 2px);
+            font-size: 1rem;
+        }
+        
+        .board-list-page .add-board-section-existing {
+            margin-top: var(--spacing-xl);
+            padding: 0; 
+            background-color: transparent; 
+            box-shadow: none; 
+            border-radius: 0;
+            border-top: 1px solid var(--color-border); 
+            padding-top: var(--spacing-lg);
+             /* If GIF makes text hard to read, add a semi-transparent background here */
+            /* background-color: rgba(var(--rgb-surface), 0.8); */
+        }
+
+        .board-list-page .add-board-section-existing h3 {
+            text-align: center; 
+            font-size: 1.3rem; 
+            margin-bottom: var(--spacing-lg); 
+            font-weight: 500; 
+        }
+        .board-list-page .add-board-section-existing .add-board-form-wrapper {
+            max-width: 600px; 
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .add-board-section-existing .add-board-form-wrapper .form-group,
+        .no-boards-welcome-container .add-board-form-inline .form-group {
+             margin-bottom: var(--spacing-md); 
+        }
+
+        @media (min-width: 768px) {
+            .add-board-section-existing .add-board-form-wrapper,
+            .no-boards-welcome-container .add-board-form-inline.add-board-form-wrapper { 
+                display: flex;
+                align-items: flex-start; 
+                gap: var(--spacing-md);
+            }
+            .add-board-section-existing .add-board-form-wrapper .form-group,
+            .no-boards-welcome-container .add-board-form-inline.add-board-form-wrapper .form-group {
+                flex-grow: 1;
+                margin-bottom: 0; 
+            }
+            .add-board-section-existing .add-board-form-wrapper button,
+            .no-boards-welcome-container .add-board-form-inline.add-board-form-wrapper button {
+                width: auto;
+                flex-shrink: 0; 
+            }
+        }
+
+        .board-list-item-actions .danger {
+            background-color: transparent;
+            color: var(--color-danger);
+            border: 1px solid var(--color-danger);
+            padding: calc(var(--spacing-sm) - 1px) calc(var(--spacing-md) - 1px); 
+        }
+        .board-list-item-actions .danger:hover {
+            background-color: var(--color-danger);
+            color: #ffffff;
+            border-color: var(--color-danger);
+        }
+        .dark-mode .board-list-item-actions .danger {
+            color: var(--color-danger); 
+            border-color: var(--color-danger);
+        }
+        .dark-mode .board-list-item-actions .danger:hover {
+            background-color: var(--color-danger-hover);
+            color: var(--color-background); 
+            border-color: var(--color-danger-hover);
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        .board-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 var(--spacing-xl) 0; 
+        }
+
+        .board-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius-md); 
+            margin-bottom: var(--spacing-sm);
+            background-color: var(--color-surface);
+            transition: background-color 0.2s ease-in-out;
+        }
+        .board-list-item:hover {
+            /* background-color: #f0f0f0; */ /* Example hover, customize as needed */
+        }
+        .board-list-item:last-child {
+            margin-bottom: 0;
+        }
+        .dark-mode .board-list-item {
+            background-color: var(--color-surface); 
+            border-color: var(--color-border);
+        }
+
+        .board-list-item-name {
+            margin: 0;
+            font-size: 1.1rem; 
+            font-weight: 500; 
+            color: var(--color-text);
+            flex-grow: 1; 
+            word-break: break-word; 
+            margin-right: var(--spacing-md); 
+        }
+
+        .board-list-item-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-shrink: 0;
+        }
+        
+        .dark-mode .no-boards-welcome-container .icon { 
+            color: var(--color-primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- IMG tag removed from here -->
+    <div id="app">
+        <nav>
+            <a @click="navigateToRoute('boards')">{{ tGlobal('navHome') }}</a>
+            <a @click="navigateToRoute('settings')">{{ tGlobal('navSettings') }}</a>
+        </nav>
+
+        <div id="app-container">
+            <board-list-page v-if="currentPage === 'boards'"
+                :boards="state.boards"
+                @add-board="addBoard"
+                @delete-board="deleteBoard"
+                @view-board="viewBoard"
+                :t-global="tGlobal" 
+            ></board-list-page>
+
+            <board-view-page v-if="currentPage === 'board' && currentBoard"
+                :board="currentBoard"
+                :search-query="state.ui.filterQuery"
+                @update-search-query="newVal => state.ui.filterQuery = newVal"
+                @add-task="addTaskToBoard"
+                @open-task-modal="openTaskModal"
+                @task-drag-start="handleTaskDragStart"
+                @task-drop-on-column="handleTaskDropOnColumn"
+                :t-global="tGlobal"
+                :settings="state.settings"
+                :navigate-to-route="navigateToRoute"
+                class="board-view-page"
+            ></board-view-page>
+
+            <settings-page v-if="currentPage === 'settings'"
+                :settings="state.settings"
+                @update-settings="updateSettings"
+                :t-global="tGlobal"
+                class="settings-page"
+            ></settings-page>
+        </div>
+
+        <task-modal v-if="state.ui.editingTask"
+            :task="state.ui.editingTask.task"
+            :column-id="state.ui.editingTask.columnId"
+            @close="closeTaskModal"
+            @save-task="saveTaskChanges"
+            @delete-task="deleteTaskFromModal"
+            :t-global="tGlobal"
+        ></task-modal>
+    </div>
+
+<script>
+    const { createApp, ref, reactive, computed, watchEffect, onMounted, onUnmounted } = Vue;
+
+    const generateId = () => '_' + Math.random().toString(36).substr(2, 9);
+
+    const translations = {
+        en: { 
+            navHome: "Boards", navSettings: "Settings", boardsTitle: "My Kanban Boards",
+            newBoardNameLabel: "Create a New Board", addBoardBtn: "Add Board", 
+            defaultBoardName: "My Project Board", defaultColumnTodo: "To Do",
+            defaultColumnInProgress: "In Progress", defaultColumnDone: "Done",
+            searchTaskPlaceholder: "Search tasks by title...", addNewTaskTitle: "Add New Task",
+            taskTitleLabel: "Title:", taskDescriptionLabel: "Description:",
+            taskPriorityLabel: "Priority:", priorityLow: "Low", priorityMedium: "Medium", priorityHigh: "High",
+            taskDueDateLabel: "Due Date:", taskColumnLabel: "Column:", addTaskBtn: "Add Task",
+            settingsTitle: "Settings", languageLabel: "Language:", themeLabel: "Theme:",
+            themeLight: "Light", themeDark: "Dark", editTaskTitle: "Edit Task",
+            saveChangesBtn: "Save Changes", deleteTaskBtn: "Delete Task",
+            confirmDeleteTask: "Are you sure you want to delete this task?",
+            dueDatePrefix: "Due: ", priorityPrefix: "Priority: ", noTasksInColumn: "No tasks yet.",
+            clickToEdit: "Click to edit task",
+            validationRequired: "This field is required.",
+            validationMinLength: (len) => `Minimum ${len} characters.`,
+            validationFutureDate: "Due date must be in the future (or today).",
+            boardNameCannotBeEmpty: "Board name cannot be empty!",
+            taskTitleCannotBeEmpty: "Task title cannot be empty!",
+            noBoardsYet: "You don't have any boards yet. Create one below to get started!", 
+            viewBoardBtn: "View Board", deleteBoardBtn: "Delete",
+            confirmDeleteBoard: (boardName) => `Are you sure you want to delete the board "${boardName}"? This action cannot be undone.`,
+            boardNotFound: "Board not found.",
+            noSearchResults: "No tasks match your search.",
+            hideTaskFormBtn: "Hide Task Form",
+            backToBoardsBtn: "Back to Boards", 
+            clearSearchBtn: "Clear search"     
+        },
+        es: { 
+            navHome: "Tableros", navSettings: "Configuración", boardsTitle: "Mis Tableros Kanban",
+            newBoardNameLabel: "Crear un Nuevo Tablero", addBoardBtn: "Añadir Tablero", 
+            defaultBoardName: "Mi Tablero de Proyecto", defaultColumnTodo: "Por Hacer",
+            defaultColumnInProgress: "En Progreso", defaultColumnDone: "Hecho",
+            searchTaskPlaceholder: "Buscar tareas por título...", addNewTaskTitle: "Añadir Nueva Tarea",
+            taskTitleLabel: "Título:", taskDescriptionLabel: "Descripción:",
+            taskPriorityLabel: "Prioridad:", priorityLow: "Baja", priorityMedium: "Media", priorityHigh: "Alta",
+            taskDueDateLabel: "Fecha de Entrega:", taskColumnLabel: "Columna:", addTaskBtn: "Añadir Tarea",
+            settingsTitle: "Configuración", languageLabel: "Idioma:", themeLabel: "Tema:",
+            themeLight: "Claro", themeDark: "Oscuro", editTaskTitle: "Editar Tarea",
+            saveChangesBtn: "Guardar Cambios", deleteTaskBtn: "Eliminar Tarea",
+            confirmDeleteTask: "¿Estás seguro de que quieres eliminar esta tarea?",
+            dueDatePrefix: "Entrega: ", priorityPrefix: "Prioridad: ", noTasksInColumn: "Aún no hay tareas.",
+            clickToEdit: "Haz clic para editar la tarea",
+            validationRequired: "Este campo es obligatorio.",
+            validationMinLength: (len) => `Mínimo ${len} caracteres.`,
+            validationFutureDate: "La fecha de entrega debe ser en el futuro (o hoy).",
+            boardNameCannotBeEmpty: "¡El nombre del tablero no puede estar vacío!",
+            taskTitleCannotBeEmpty: "¡El título de la tarea no puede estar vacío!",
+            noBoardsYet: "Aún no tienes tableros. ¡Crea uno abajo para empezar!", 
+            viewBoardBtn: "Ver Tablero", deleteBoardBtn: "Eliminar",
+            confirmDeleteBoard: (boardName) => `¿Seguro que quieres eliminar el tablero "${boardName}"? Esta acción no se puede deshacer.`,
+            boardNotFound: "Tablero no encontrado.",
+            noSearchResults: "Ninguna tarea coincide con tu búsqueda.",
+            hideTaskFormBtn: "Ocultar Formulario de Tarea",
+            backToBoardsBtn: "Volver a Tableros", 
+            clearSearchBtn: "Limpiar búsqueda"    
+        },
+        fr: { 
+            navHome: "Tableaux", navSettings: "Paramètres", boardsTitle: "Mes Tableaux Kanban",
+            newBoardNameLabel: "Créer un Nouveau Tableau", addBoardBtn: "Ajouter un Tableau", 
+            defaultBoardName: "Mon Tableau de Projet", defaultColumnTodo: "À Faire",
+            defaultColumnInProgress: "En Cours", defaultColumnDone: "Terminé",
+            searchTaskPlaceholder: "Rechercher des tâches par titre...", addNewTaskTitle: "Ajouter une Nouvelle Tâche",
+            taskTitleLabel: "Titre :", taskDescriptionLabel: "Description :",
+            taskPriorityLabel: "Priorité :", priorityLow: "Basse", priorityMedium: "Moyenne", priorityHigh: "Haute",
+            taskDueDateLabel: "Date d'Échéance :", taskColumnLabel: "Colonne :", addTaskBtn: "Ajouter la Tâche",
+            settingsTitle: "Paramètres", languageLabel: "Langue :", themeLabel: "Thème :",
+            themeLight: "Clair", themeDark: "Sombre", editTaskTitle: "Modifier la Tâche",
+            saveChangesBtn: "Sauvegarder les Modifications", deleteTaskBtn: "Supprimer la Tâche",
+            confirmDeleteTask: "Êtes-vous sûr de vouloir supprimer cette tâche ?",
+            dueDatePrefix: "Échéance : ", priorityPrefix: "Priorité : ", noTasksInColumn: "Aucune tâche pour l'instant.",
+            clickToEdit: "Cliquez pour modifier la tâche",
+            validationRequired: "Ce champ est requis.",
+            validationMinLength: (len) => `Minimum ${len} caractères.`,
+            validationFutureDate: "La date d'échéance doit être dans le futur (ou aujourd'hui).",
+            boardNameCannotBeEmpty: "Le nom du tableau ne peut pas être vide !",
+            taskTitleCannotBeEmpty: "Le titre de la tâche ne peut pas être vide !",
+            noBoardsYet: "Vous n'avez pas encore de tableaux. Créez-en un ci-dessous pour commencer !", 
+            viewBoardBtn: "Voir le Tableau", deleteBoardBtn: "Supprimer",
+            confirmDeleteBoard: (boardName) => `Supprimer le tableau "${boardName}" ? Cette action est irréversible.`, 
+            boardNotFound: "Tableau non trouvé.",
+            noSearchResults: "Aucune tâche ne correspond à votre recherche.",
+            hideTaskFormBtn: "Masquer le Formulaire de Tâche",
+            backToBoardsBtn: "Retour aux Tableaux", 
+            clearSearchBtn: "Effacer la recherche"   
+         }
+    };
+
+    const store = reactive({
+        state: { 
+            boards: [],
+            currentBoardId: null,
+            settings: { language: 'en', theme: 'light' },
+            ui: { editingTask: null, draggedTaskInfo: null, filterQuery: '' }
+        },
+        get t() {
+            return (key, ...args) => {
+                const lang = this.state.settings.language;
+                const translation = translations[lang]?.[key] || key;
+                return typeof translation === 'function' ? translation(...args) : translation;
+            };
+        },
+        initializeDefaultState() { 
+            this.state.boards = []; this.state.settings.language = 'en'; this.state.settings.theme = 'light';
+        },
+        addBoard(name) { 
+            if (!name.trim() || name.trim().length < 3) return null;
+            const newBoard = { id: generateId(), name: name.trim(), columns: [
+                { id: generateId(), name: this.t('defaultColumnTodo'), tasks: [] },
+                { id: generateId(), name: this.t('defaultColumnInProgress'), tasks: [] },
+                { id: generateId(), name: this.t('defaultColumnDone'), tasks: [] }
+            ]};
+            this.state.boards.push(newBoard); return newBoard;
+        },
+        deleteBoard(boardId) { 
+            this.state.boards = this.state.boards.filter(b => b.id !== boardId);
+            if (this.state.currentBoardId === boardId) {
+                this.state.currentBoardId = this.state.boards.length > 0 ? this.state.boards[0].id : null;
+            }
+        },
+        addTaskToBoard({ boardId, taskDetails }) { 
+            const board = this.state.boards.find(b => b.id === boardId);
+            if (!board || !taskDetails.title.trim() || taskDetails.title.trim().length < 3) return false;
+            const newTask = { id: generateId(), ...taskDetails, createdAt: new Date().toISOString() };
+            const targetColumn = board.columns.find(c => c.id === taskDetails.columnId) || board.columns[0];
+            if (targetColumn) targetColumn.tasks.push(newTask);
+            else return false; return true;
+        },
+        updateSettings(newSettings) { this.state.settings = { ...this.state.settings, ...newSettings }; },
+        openTaskModal({ taskId, columnId }) { 
+            const board = this.state.boards.find(b => b.id === this.state.currentBoardId); if (!board) return;
+            const column = board.columns.find(c => c.id === columnId); if (!column) return;
+            const task = column.tasks.find(t => t.id === taskId); if (!task) return;
+            this.state.ui.editingTask = { task: { ...task }, columnId };
+        },
+        closeTaskModal() { this.state.ui.editingTask = null; },
+        saveTaskChanges({ taskId, originalColumnId, updatedTaskData }) { 
+            const board = this.state.boards.find(b => b.id === this.state.currentBoardId); if (!board) return;
+            const column = board.columns.find(c => c.id === originalColumnId); if (!column) return;
+            const taskIndex = column.tasks.findIndex(t => t.id === taskId); if (taskIndex === -1) return;
+            column.tasks[taskIndex] = { ...column.tasks[taskIndex], ...updatedTaskData }; this.closeTaskModal();
+        },
+        deleteTaskFromModal({ taskId, columnId }) { 
+            const board = this.state.boards.find(b => b.id === this.state.currentBoardId); if (!board) return;
+            const column = board.columns.find(c => c.id === columnId); if (!column) return;
+            column.tasks = column.tasks.filter(t => t.id !== taskId); this.closeTaskModal();
+        },
+        handleTaskDragStart({ taskId, originalColumnId }) { this.state.ui.draggedTaskInfo = { taskId, originalColumnId }; },
+        handleTaskDropOnColumn({ targetColumnId }) { 
+            if (!this.state.ui.draggedTaskInfo) return;
+            const { taskId, originalColumnId } = this.state.ui.draggedTaskInfo;
+            if (originalColumnId === targetColumnId) { this.state.ui.draggedTaskInfo = null; return; }
+            const board = this.state.boards.find(b => b.id === this.state.currentBoardId); if (!board) return;
+            const sourceCol = board.columns.find(c => c.id === originalColumnId);
+            const targetCol = board.columns.find(c => c.id === targetColumnId); if (!sourceCol || !targetCol) return;
+            const taskIndex = sourceCol.tasks.findIndex(t => t.id === taskId); if (taskIndex === -1) return;
+            const [taskToMove] = sourceCol.tasks.splice(taskIndex, 1);
+            targetCol.tasks.push(taskToMove); this.state.ui.draggedTaskInfo = null;
+        }
+    });
+
+    const app = createApp({
+        setup() { 
+            const currentPage = ref('boards');
+            const tGlobal = computed(() => store.t);
+
+            const setCurrentPage = (page, param = null) => {
+                currentPage.value = page;
+                if (page === 'board' && param) {
+                    store.state.currentBoardId = param;
+                } else if (page !== 'board') {
+                    store.state.currentBoardId = null;
+                    store.state.ui.filterQuery = ''; 
+                }
+            };
+
+            const currentBoard = computed(() => {
+                if (currentPage.value === 'board' && store.state.currentBoardId) {
+                    return store.state.boards.find(b => b.id === store.state.currentBoardId);
+                }
+                return null;
+            });
+            
+            const viewBoard = (boardId) => { window.location.hash = `board/${boardId}`; };
+            const navigateToRoute = (page, param = null) => {
+                if (param) { window.location.hash = `${page}/${param}`; } 
+                else { window.location.hash = page; }
+            };
+
+            const handleHashChange = () => {
+                const hash = window.location.hash.slice(1);
+                if (!hash) { setCurrentPage('boards'); return; }
+                const [pageFromHash, paramFromHash] = hash.split('/');
+                if ( (pageFromHash === 'board' && paramFromHash !== store.state.currentBoardId) || pageFromHash !== 'board') {
+                    store.state.ui.filterQuery = '';
+                }
+                setCurrentPage(pageFromHash || 'boards', paramFromHash || null);
+            };
+
+            const addBoardAndNavigate = (boardName) => {
+                const newBoard = store.addBoard(boardName); 
+                if (newBoard && newBoard.id) {
+                    navigateToRoute('board', newBoard.id);
+                }
+            };
+
+            onMounted(() => {
+                store.initializeDefaultState();
+                window.addEventListener('hashchange', handleHashChange);
+                handleHashChange(); 
+            });
+            onUnmounted(() => { window.removeEventListener('hashchange', handleHashChange); });
+            watchEffect(() => { 
+                // Theme class is still applied to body for font colors etc.
+                // The background image is now handled separately by the body CSS.
+                document.body.className = store.state.settings.theme === 'dark' ? 'dark-mode' : ''; 
+            });
+
+            return {
+                state: store.state, tGlobal, currentPage, currentBoard, navigateToRoute,
+                addBoard: addBoardAndNavigate, 
+                deleteBoard: (...args) => store.deleteBoard(...args),
+                viewBoard,
+                addTaskToBoard: (...args) => store.addTaskToBoard(...args),
+                updateSettings: (...args) => store.updateSettings(...args),
+                openTaskModal: (...args) => store.openTaskModal(...args),
+                closeTaskModal: (...args) => store.closeTaskModal(...args),
+                saveTaskChanges: (...args) => store.saveTaskChanges(...args),
+                deleteTaskFromModal: (...args) => store.deleteTaskFromModal(...args),
+                handleTaskDragStart: (...args) => store.handleTaskDragStart(...args),
+                handleTaskDropOnColumn: (...args) => store.handleTaskDropOnColumn(...args),
+            };
+        }
+    });
+
+    app.component('board-list-page', {
+        props: ['boards', 'tGlobal'],
+        emits: ['add-board', 'delete-board', 'view-board'],
+        setup(props, { emit }) {
+            const newBoardName = ref('');
+            const isNewBoardNameValid = computed(() => newBoardName.value.trim().length >= 3);
+            
+            const handleAddBoard = () => {
+                if (isNewBoardNameValid.value) {
+                    emit('add-board', newBoardName.value);
+                    newBoardName.value = '';
+                }
+            };
+
+            const confirmDeleteBoard = (board) => {
+                if (confirm(props.tGlobal('confirmDeleteBoard', board.name))) {
+                    emit('delete-board', board.id);
+                }
+            };
+
+            return { newBoardName, isNewBoardNameValid, handleAddBoard, confirmDeleteBoard };
+        },
+        template: `
+            <div class="page board-list-page"> 
+                <h2 class="page-title">{{ tGlobal('boardsTitle') }}</h2>
+
+                <div v-if="boards.length === 0" class="no-boards-welcome-container">
+                    <span class="icon" aria-hidden="true">🗂️</span>
+                    <p class="welcome-text">{{ tGlobal('noBoardsYet') }}</p>
+                    
+                    <div class="add-board-form-wrapper add-board-form-inline"> 
+                        <div class="form-group">
+                            <label for="new-board-name-input-welcome" class="sr-only">{{ tGlobal('newBoardNameLabel') }}</label>
+                            <input id="new-board-name-input-welcome" type="text" v-model="newBoardName" 
+                                   :placeholder="tGlobal('defaultBoardName')"
+                                   :class="{ 'invalid': newBoardName.length > 0 && !isNewBoardNameValid }"
+                                   style="background-color: rgba(255, 255, 255, 0.8); color: black;"
+                                   @keyup.enter="handleAddBoard">
+                            <span v-if="newBoardName.length > 0 && !isNewBoardNameValid" class="error-message">{{ tGlobal('validationMinLength', 3) }}</span>
+                        </div>
+                        <button @click="handleAddBoard" :disabled="!isNewBoardNameValid">{{ tGlobal('addBoardBtn') }}</button>
+                    </div>
+                </div>
+
+                <div v-else>
+                    <ul class="board-list">
+                        <li v-for="board in boards" :key="board.id" class="board-list-item">
+                            <span class="board-list-item-name">{{ board.name }}</span>
+                            <div class="board-list-item-actions">
+                                <button @click="$emit('view-board', board.id)" class="button-secondary">
+                                    {{ tGlobal('viewBoardBtn') }}
+                                </button>
+                                <button @click="confirmDeleteBoard(board)" class="danger">
+                                    {{ tGlobal('deleteBoardBtn') }}
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="add-board-section-existing">
+                        <h3>{{ tGlobal('newBoardNameLabel') }}</h3>
+                        <div class="add-board-form-wrapper">
+                            <div class="form-group">
+                                <label for="new-board-name-input" class="sr-only">{{ tGlobal('newBoardNameLabel') }}</label>
+                                <input id="new-board-name-input" type="text" v-model="newBoardName" 
+                                       :placeholder="tGlobal('defaultBoardName')"
+                                       :class="{ 'invalid': newBoardName.length > 0 && !isNewBoardNameValid }"
+                                       style="background-color: rgba(255, 255, 255, 0.8); color: black;"
+                                       @keyup.enter="handleAddBoard">
+                                <span v-if="newBoardName.length > 0 && !isNewBoardNameValid" class="error-message">{{ tGlobal('validationMinLength', 3) }}</span>
+                            </div>
+                            <button @click="handleAddBoard" :disabled="!isNewBoardNameValid">{{ tGlobal('addBoardBtn') }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `
+    });
+
+    app.component('board-view-page', {
+        props: ['board', 'searchQuery', 'tGlobal', 'settings', 'navigateToRoute'],
+        emits: ['update-search-query', 'add-task', 'open-task-modal', 'task-drag-start', 'task-drop-on-column'],
+        setup(props, { emit }) {
+            const newTask = reactive({ title: '', description: '', priority: 'medium', dueDate: '', columnId: '' });
+            const isAddTaskFormVisible = ref(false);
+
+            const isNewTaskTitleValid = computed(() => newTask.title.trim().length >= 3);
+            const isNewTaskDueDateValid = computed(() => {
+                if (!newTask.dueDate) return true;
+                const today = new Date(); today.setHours(0,0,0,0);
+                return new Date(newTask.dueDate) >= today;
+            });
+            const isNewTaskFormValid = computed(() => isNewTaskTitleValid.value && isNewTaskDueDateValid.value);
+
+            watchEffect(() => {
+                if (props.board && props.board.columns.length > 0 && !newTask.columnId) {
+                    newTask.columnId = props.board.columns[0].id;
+                }
+            });
+
+            const toggleAddTaskForm = () => {
+                isAddTaskFormVisible.value = !isAddTaskFormVisible.value;
+            };
+
+            const handleAddTask = () => {
+                if (isNewTaskFormValid.value) {
+                    emit('add-task', { boardId: props.board.id, taskDetails: { ...newTask } });
+                    newTask.title = ''; newTask.description = ''; newTask.priority = 'medium'; newTask.dueDate = '';
+                    if (props.board.columns.length > 0) newTask.columnId = props.board.columns[0].id;
+                    isAddTaskFormVisible.value = false; 
+                }
+            };
+
+            const filteredColumns = computed(() => {
+                if (!props.board) return [];
+                return props.board.columns.map(column => ({
+                    ...column,
+                    tasks: column.tasks.filter(task =>
+                        task.title.toLowerCase().includes(props.searchQuery.toLowerCase()) ||
+                        (task.description && task.description.toLowerCase().includes(props.searchQuery.toLowerCase()))
+                    )
+                }));
+            });
+            
+            const handleGoBack = () => {
+                if(props.navigateToRoute) {
+                    props.navigateToRoute('boards');
+                }
+            };
+
+            return { 
+                newTask, 
+                isNewTaskFormValid, 
+                isNewTaskTitleValid, 
+                isNewTaskDueDateValid, 
+                handleAddTask, 
+                filteredColumns,
+                isAddTaskFormVisible,
+                toggleAddTaskForm,
+                handleGoBack
+            };
+        },
+        template: `
+            <div class="page"> 
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: var(--spacing-sm);">
+                    <h2 style="margin-bottom: 0; margin-right: auto;">{{ board.name }}</h2>
+                    <button @click="handleGoBack" class="button-secondary">
+                        &larr; {{ tGlobal('backToBoardsBtn') }}
+                    </button>
+                </div>
+
+                <div class="form-group search-bar-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" :value="searchQuery" @input="$emit('update-search-query', $event.target.value)" 
+                           :placeholder="tGlobal('searchTaskPlaceholder')">
+                    <button v-if="searchQuery" @click="$emit('update-search-query', '')" 
+                            class="clear-search-button" :title="tGlobal('clearSearchBtn')">
+                        &times;
+                    </button>
+                </div>
+
+                <div class="kanban-board">
+                    <kanban-column v-for="column in filteredColumns" :key="column.id"
+                        :column="column"
+                        :original-tasks-count="board.columns.find(c => c.id === column.id).tasks.length"
+                        :search-active="searchQuery.length > 0"
+                        @open-task-modal="$emit('open-task-modal', $event)"
+                        @task-drag-start="$emit('task-drag-start', $event)"
+                        @task-drop-on-column="$emit('task-drop-on-column', $event)"
+                        :t-global="tGlobal"
+                        :settings="settings"
+                    ></kanban-column>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--color-border); margin: var(--spacing-lg) 0;">
+                
+                <button @click="toggleAddTaskForm" 
+                        class="add-task-toggle-button"
+                        :class="{ 'is-open': isAddTaskFormVisible }">
+                    <span v-if="isAddTaskFormVisible">▼ {{ tGlobal('hideTaskFormBtn') }}</span>
+                    <span v-else>+ {{ tGlobal('addNewTaskTitle') }}</span>
+                </button>
+
+                <div v-if="isAddTaskFormVisible" class="add-task-accordion-content">
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskTitleLabel') }}</label>
+                        <input type="text" v-model="newTask.title" :class="{ 'invalid': newTask.title.length > 0 && !isNewTaskTitleValid }">
+                        <span v-if="newTask.title.length > 0 && !isNewTaskTitleValid" class="error-message">{{ tGlobal('validationMinLength', 3) }}</span>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskDescriptionLabel') }}</label>
+                        <textarea v-model="newTask.description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskPriorityLabel') }}</label>
+                        <select v-model="newTask.priority">
+                            <option value="low">{{ tGlobal('priorityLow') }}</option>
+                            <option value="medium">{{ tGlobal('priorityMedium') }}</option>
+                            <option value="high">{{ tGlobal('priorityHigh') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskDueDateLabel') }}</label>
+                        <input type="date" v-model="newTask.dueDate" :class="{ 'invalid': newTask.dueDate && !isNewTaskDueDateValid }">
+                         <span v-if="newTask.dueDate && !isNewTaskDueDateValid" class="error-message">{{ tGlobal('validationFutureDate') }}</span>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskColumnLabel') }}</label>
+                        <select v-model="newTask.columnId" v-if="board.columns && board.columns.length > 0">
+                            <option v-for="col in board.columns" :key="col.id" :value="col.id">{{ col.name }}</option>
+                        </select>
+                         <p v-else class="error-message">No columns available. Please add columns to the board first.</p>
+                    </div>
+                    <button @click="handleAddTask" :disabled="!isNewTaskFormValid">{{ tGlobal('addTaskBtn') }}</button>
+                </div>
+            </div>
+        `
+    });
+
+    app.component('kanban-column', {
+        props: ['column', 'originalTasksCount', 'searchActive', 'tGlobal', 'settings'],
+        emits: ['open-task-modal', 'task-drag-start', 'task-drop-on-column'],
+        setup(props, { emit }) {
+            const dragOver = ref(false);
+            const handleDragOver = (e) => { e.preventDefault(); dragOver.value = true; };
+            const handleDragLeave = () => { dragOver.value = false; };
+            const handleDrop = (e) => {
+                dragOver.value = false;
+                emit('task-drop-on-column', { targetColumnId: props.column.id });
+            };
+            return { dragOver, handleDragOver, handleDragLeave, handleDrop };
+        },
+        template: `
+            <div class="kanban-column" :class="{ 'drag-over': dragOver }"
+                 @dragover="handleDragOver" @dragleave="handleDragLeave" @drop="handleDrop">
+                <h3>{{ column.name }} ({{ column.tasks.length }})</h3>
+                <div class="tasks-container">
+                    <task-card v-for="task in column.tasks" :key="task.id"
+                        :task="task"
+                        :column-id="column.id"
+                        @open-task-modal="$emit('open-task-modal', { taskId: task.id, columnId: column.id })"
+                        @task-drag-start="$emit('task-drag-start', { taskId: task.id, originalColumnId: column.id })"
+                        :t-global="tGlobal"
+                        :settings="settings"
+                    ></task-card>
+                    <p v-if="column.tasks.length === 0 && originalTasksCount > 0 && searchActive" 
+                       class="no-tasks-message" style="color: var(--color-text-muted); text-align: center; padding: var(--spacing-md) 0;">
+                       {{ tGlobal('noSearchResults') }}
+                    </p>
+                    <p v-else-if="originalTasksCount === 0" 
+                       class="no-tasks-message" style="color: var(--color-text-muted); text-align: center; padding: var(--spacing-md) 0;">
+                       {{ tGlobal('noTasksInColumn') }}
+                    </p>
+                </div>
+            </div>
+        `
+    });
+
+    app.component('task-card', {
+        props: ['task', 'columnId', 'tGlobal', 'settings'],
+        emits: ['open-task-modal', 'task-drag-start'],
+        setup(props, { emit }) {
+            const formattedDueDate = computed(() => {
+                if (!props.task.dueDate) return '';
+                const dateParts = props.task.dueDate.split('-');
+                const localDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+                return localDate.toLocaleDateString(props.settings.language, { year: 'numeric', month: 'short', day: 'numeric' });
+            });
+            const priorityText = computed(() => props.tGlobal(`priority${props.task.priority.charAt(0).toUpperCase() + props.task.priority.slice(1)}`));
+            
+            const handleDragStart = (e) => {
+                e.dataTransfer.setData('text/plain', props.task.id);
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.classList.add('dragging');
+                emit('task-drag-start');
+            };
+            const handleDragEnd = (e) => { e.target.classList.remove('dragging'); };
+
+            return { formattedDueDate, priorityText, handleDragStart, handleDragEnd };
+        },
+        template: `
+            <div :class="['task-card', 'priority-' + task.priority]" 
+                 draggable="true" 
+                 @dragstart="handleDragStart"
+                 @dragend="handleDragEnd"
+                 @click="$emit('open-task-modal')" 
+                 :title="tGlobal('clickToEdit')">
+                <h4>{{ task.title }}</h4>
+                <p v-if="task.description">{{ task.description }}</p>
+                <p v-if="task.dueDate"><small>{{ tGlobal('dueDatePrefix') }}{{ formattedDueDate }}</small></p>
+                <p><small>{{ tGlobal('priorityPrefix') }}{{ priorityText }}</small></p>
+            </div>
+        `
+    });
+
+    app.component('settings-page', {
+        props: ['settings', 'tGlobal'],
+        emits: ['update-settings'],
+        setup(props, { emit }) {
+            const localLanguage = ref(props.settings.language);
+            const localTheme = ref(props.settings.theme);
+
+            watchEffect(() => {
+                localLanguage.value = props.settings.language;
+                localTheme.value = props.settings.theme;
+            });
+
+            const updateLanguage = () => emit('update-settings', { language: localLanguage.value });
+            const updateTheme = () => emit('update-settings', { theme: localTheme.value });
+
+            return { localLanguage, localTheme, updateLanguage, updateTheme };
+        },
+        template: `
+            <div class="page"> 
+                <h2>{{ tGlobal('settingsTitle') }}</h2>
+                <div class="form-group">
+                    <label for="language-select">{{ tGlobal('languageLabel') }}</label>
+                    <select id="language-select" v-model="localLanguage" @change="updateLanguage">
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="theme-select">{{ tGlobal('themeLabel') }}</label>
+                    <select id="theme-select" v-model="localTheme" @change="updateTheme">
+                        <option value="light">{{ tGlobal('themeLight') }}</option>
+                        <option value="dark">{{ tGlobal('themeDark') }}</option>
+                    </select>
+                </div>
+            </div>
+        `
+    });
+
+    app.component('task-modal', {
+        props: ['task', 'columnId', 'tGlobal'],
+        emits: ['close', 'save-task', 'delete-task'],
+        setup(props, { emit }) {
+            const editableTask = reactive({ ...props.task });
+            watchEffect(() => { Object.assign(editableTask, props.task); });
+
+            const isTitleValid = computed(() => editableTask.title.trim().length >= 3);
+            const isDueDateValid = computed(() => {
+                if (!editableTask.dueDate) return true;
+                const today = new Date(); today.setHours(0,0,0,0);
+                return new Date(editableTask.dueDate) >= today;
+            });
+            const isFormValid = computed(() => isTitleValid.value && isDueDateValid.value);
+
+            const handleSave = () => {
+                if (isFormValid.value) {
+                    emit('save-task', { taskId: props.task.id, originalColumnId: props.columnId, updatedTaskData: { ...editableTask } });
+                }
+            };
+            const handleDelete = () => {
+                if (confirm(props.tGlobal('confirmDeleteTask'))) {
+                    emit('delete-task', { taskId: props.task.id, columnId: props.columnId });
+                }
+            };
+            return { editableTask, isFormValid, isTitleValid, isDueDateValid, handleSave, handleDelete };
+        },
+        template: `
+            <div class="modal">
+                <div class="modal-content">
+                    <button @click="$emit('close')" class="close-button">&times;</button>
+                    <h3>{{ tGlobal('editTaskTitle') }}</h3>
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskTitleLabel') }}</label>
+                        <input type="text" v-model="editableTask.title" :class="{ 'invalid': editableTask.title.length > 0 && !isTitleValid }">
+                        <span v-if="editableTask.title.length > 0 && !isTitleValid" class="error-message">{{ tGlobal('validationMinLength', 3) }}</span>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskDescriptionLabel') }}</label>
+                        <textarea v-model="editableTask.description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskPriorityLabel') }}</label>
+                        <select v-model="editableTask.priority">
+                            <option value="low">{{ tGlobal('priorityLow') }}</option>
+                            <option value="medium">{{ tGlobal('priorityMedium') }}</option>
+                            <option value="high">{{ tGlobal('priorityHigh') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{{ tGlobal('taskDueDateLabel') }}</label>
+                        <input type="date" v-model="editableTask.dueDate" :class="{ 'invalid': editableTask.dueDate && !isDueDateValid }">
+                        <span v-if="editableTask.dueDate && !isDueDateValid" class="error-message">{{ tGlobal('validationFutureDate') }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: var(--spacing-sm); margin-top: var(--spacing-md);">
+                        <button @click="handleDelete" class="danger">{{ tGlobal('deleteTaskBtn') }}</button>
+                        <button @click="handleSave" :disabled="!isFormValid">{{ tGlobal('saveChangesBtn') }}</button>
+                    </div>
+                </div>
+            </div>
+        `
+    });
+
+    app.mount('#app');
+
+</script>
+
+</body>
+</html>
